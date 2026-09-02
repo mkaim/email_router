@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""End-to-end check of a running stack (``docker compose up -d``).
+"""End-to-end Definition of Done check against a running stack.
+
+Start the stack with ``docker compose up -d`` first, then run this script.
 
 Verifies the Definition of Done:
 
@@ -11,7 +13,7 @@ Verifies the Definition of Done:
 Usage::
 
     docker compose up -d
-    python e2e.py
+    python check_dod.py
 
 Only the standard library is used, so no dependencies are required.
 """

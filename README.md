@@ -59,15 +59,15 @@ uv run pytest
 Tests run fully offline — the LLM is replaced with a stub model and SMTP with an
 in-memory fake, so no network, GPU, or mail server is needed.
 
-### End-to-end check
+### DoD acceptance check (end-to-end)
 
-With the stack running (`docker compose up -d`), `e2e.py` drives the real API
-and asserts the acceptance criteria: Swagger is reachable at `/api/v1/docs`, a
-posted issue produces a message in MailHog, that message is addressed to the
-correct department, and its `Reply-To` is the client's address.
+With the stack running (`docker compose up -d`), `check_dod.py` drives the real
+API and asserts every acceptance criterion: Swagger is reachable at
+`/api/v1/docs`, a posted issue produces a message in MailHog, that message is
+addressed to the correct department, and its `Reply-To` is the client's address.
 
 ```bash
-python e2e.py
+python check_dod.py
 ```
 
 It uses only the standard library. The first request may take a while as the
@@ -75,7 +75,7 @@ LLM server loads the model. If host port 8000 or 8025 is taken, override them:
 
 ```bash
 APP_PORT=8001 docker compose up -d
-API_BASE=http://localhost:8001 python e2e.py
+API_BASE=http://localhost:8001 python check_dod.py
 ```
 
 ## Configuration
