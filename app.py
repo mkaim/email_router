@@ -1,11 +1,18 @@
 from typing import Annotated
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from pydantic import BaseModel, EmailStr, Field
 
 from router import route_issue, settings
 
-app = FastAPI(root_path=settings.BASE_URL)
+app = FastAPI(
+    title="Email Router",
+    docs_url=f"{settings.BASE_URL}/docs",
+    openapi_url=f"{settings.BASE_URL}/openapi.json",
+    redoc_url=None,
+)
+
+api = APIRouter(prefix=settings.BASE_URL)
 
 
 class ClientIssue(BaseModel):
@@ -13,6 +20,9 @@ class ClientIssue(BaseModel):
     message: Annotated[str, Field(strip_whitespace=True, min_length=1)]
 
 
-@app.post("/issues")
+@api.post("/issues")
 def route_issue_endpoint(issue: ClientIssue):
     return {"response": route_issue(issue.email, issue.message)}
+
+
+app.include_router(api)

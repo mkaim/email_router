@@ -29,9 +29,12 @@ Only the app port and the MailHog web UI (for inspecting routed mail) are
 published to the host; the SMTP port and the LLM server stay on the internal
 Compose network.
 
-The API is served under the `BASE_URL` prefix (`/api/v1` by default), so the
-endpoint is `POST http://localhost:8000/api/v1/issues`. Routed messages show up
-in the MailHog web UI.
+The API is served under the `BASE_URL` prefix (`/api/v1` by default):
+
+- endpoint: `POST http://localhost:8000/api/v1/issues`
+- Swagger UI: <http://localhost:8000/api/v1/docs>
+
+Routed messages show up in the MailHog web UI.
 
 > The `llm` service requests a GPU (`gpus: all`) and downloads the model on
 > first start. To use a different backend, point `OPENAI_BASE_URL` /
@@ -55,6 +58,20 @@ uv run pytest
 
 Tests run fully offline — the LLM is replaced with a stub model and SMTP with an
 in-memory fake, so no network, GPU, or mail server is needed.
+
+### End-to-end check
+
+With the stack running (`docker compose up -d`), `e2e.py` drives the real API
+and asserts the acceptance criteria: Swagger is reachable at `/api/v1/docs`, a
+posted issue produces a message in MailHog, that message is addressed to the
+correct department, and its `Reply-To` is the client's address.
+
+```bash
+python e2e.py
+```
+
+It uses only the standard library. The first request may take a while as the
+LLM server loads the model.
 
 ## Configuration
 
