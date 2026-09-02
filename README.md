@@ -71,7 +71,12 @@ python e2e.py
 ```
 
 It uses only the standard library. The first request may take a while as the
-LLM server loads the model.
+LLM server loads the model. If host port 8000 or 8025 is taken, override them:
+
+```bash
+APP_PORT=8001 docker compose up -d
+API_BASE=http://localhost:8001 python e2e.py
+```
 
 ## Configuration
 

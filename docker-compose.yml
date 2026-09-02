@@ -3,7 +3,7 @@ services:
     image: app:latest
     build: .
     ports:
-      - "8000:8000"
+      - "${APP_PORT:-8000}:8000"
     environment:
       PORT: "8000"
       OPENAI_BASE_URL: http://llm:8080/v1

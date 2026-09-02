@@ -19,13 +19,14 @@ Only the standard library is used, so no dependencies are required.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 import urllib.error
 import urllib.request
 
-API = "http://localhost:8000/api/v1"
-MAILHOG = "http://localhost:8025"
+API = os.environ.get("API_BASE", "http://localhost:8000") + "/api/v1"
+MAILHOG = os.environ.get("MAILHOG_BASE", "http://localhost:8025")
 POLL_TIMEOUT = 120.0  # seconds; first LLM call can be slow to warm up
 
 # Deliberately unambiguous messages so a small local model routes them reliably.
