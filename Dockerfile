@@ -17,7 +17,7 @@ WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 
 # Aplikacja
-COPY app.py config.py .
+COPY app.py router.py config.py .
 
 ENV PATH="/app/.venv/bin:$PATH"
 

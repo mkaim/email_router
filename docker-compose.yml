@@ -19,13 +19,11 @@ services:
   smtp:
     image: mailhog/mailhog
     ports:
-      - "1025:1025"
+      # Web UI for inspecting routed mail; SMTP (1025) stays internal.
       - "8025:8025"
-  
+
   llm:
     image: ghcr.io/ggml-org/llama.cpp:server
-    ports:
-      - "8080:8080"
     volumes:
       - llm-models:/models
     command:
