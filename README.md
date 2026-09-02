@@ -29,6 +29,11 @@ Only the app port and the MailHog web UI (for inspecting routed mail) are
 published to the host; the SMTP port and the LLM server stay on the internal
 Compose network.
 
+`smtp` and `llm` have healthchecks (MailHog's HTTP API, and a one-token
+generation against the LLM), and `app` waits for both to report healthy before
+it starts — so the first `docker compose up` may sit for a minute while the LLM
+loads the model.
+
 The API is served under the `BASE_URL` prefix (`/api/v1` by default):
 
 - endpoint: `POST http://localhost:8000/api/v1/issues`

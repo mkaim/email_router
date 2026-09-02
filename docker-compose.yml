@@ -13,17 +13,46 @@ services:
       SMTP_HOST: smtp
       SMTP_PORT: "1025"
     depends_on:
-      - smtp
-      - llm
+      smtp:
+        condition: service_healthy
+      llm:
+        condition: service_healthy
 
   smtp:
     image: mailhog/mailhog
     ports:
       # Web UI for inspecting routed mail; SMTP (1025) stays internal.
       - "8025:8025"
+    healthcheck:
+      # MailHog runs SMTP and the HTTP API in one process, so a reachable
+      # HTTP API means the SMTP listener is up too.
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8025/api/v2/messages"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   llm:
     image: ghcr.io/ggml-org/llama.cpp:server
+    healthcheck:
+      # Round-trip a tiny generation; any HTTP 2xx means the model can serve.
+      # (llama.cpp also exposes /health, but this exercises actual inference.)
+      test:
+        - CMD
+        - curl
+        - -fsS
+        - -m
+        - "20"
+        - -X
+        - POST
+        - http://localhost:8080/v1/chat/completions
+        - -H
+        - "Content-Type: application/json"
+        - -d
+        - '{"messages":[{"role":"user","content":"ping"}],"max_tokens":1}'
+      interval: 30s
+      timeout: 25s
+      retries: 10
+      start_period: 300s
     volumes:
       - llm-models:/models
     command:

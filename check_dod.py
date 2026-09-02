@@ -89,6 +89,17 @@ def _wait_for_mail() -> dict[str, list[str]]:
     raise AssertionError("no message captured by MailHog within timeout")
 
 
+def _wait_for_api() -> None:
+    deadline = time.monotonic() + POLL_TIMEOUT
+    while time.monotonic() < deadline:
+        try:
+            _request("GET", f"{API}/docs")
+            return
+        except (urllib.error.URLError, ConnectionError):
+            time.sleep(1.0)
+    raise AssertionError(f"API at {API} did not come up within timeout")
+
+
 def _check(label: str, ok: bool, detail: str = "") -> bool:
     mark = "PASS" if ok else "FAIL"
     print(f"[{mark}] {label}" + (f" -- {detail}" if detail else ""))
@@ -98,6 +109,7 @@ def _check(label: str, ok: bool, detail: str = "") -> bool:
 def main() -> int:
     passed = True
 
+    _wait_for_api()
     status, _ = _request("GET", f"{API}/docs")
     passed &= _check("Swagger docs at /api/v1/docs", status == 200, f"HTTP {status}")
 
