@@ -81,40 +81,63 @@ def _headers_of_latest() -> dict[str, list[str]] | None:
 
 def _wait_for_mail() -> dict[str, list[str]]:
     deadline = time.monotonic() + POLL_TIMEOUT
+    last_log = 0.0
     while time.monotonic() < deadline:
         headers = _headers_of_latest()
         if headers is not None:
             return headers
+        now = time.monotonic()
+        if now - last_log >= 5.0:
+            _log(
+                f"no message in MailHog yet, waiting ... ({int(deadline - now)}s left)"
+            )
+            last_log = now
         time.sleep(1.0)
     raise AssertionError("no message captured by MailHog within timeout")
 
 
 def _wait_for_api() -> None:
     deadline = time.monotonic() + POLL_TIMEOUT
+    last_log = 0.0
     while time.monotonic() < deadline:
         try:
             _request("GET", f"{API}/docs")
             return
         except (urllib.error.URLError, ConnectionError):
+            now = time.monotonic()
+            if now - last_log >= 5.0:
+                _log(f"API not up yet, retrying ... ({int(deadline - now)}s left)")
+                last_log = now
             time.sleep(1.0)
     raise AssertionError(f"API at {API} did not come up within timeout")
 
 
+def _log(msg: str) -> None:
+    print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
+
+
 def _check(label: str, ok: bool, detail: str = "") -> bool:
     mark = "PASS" if ok else "FAIL"
-    print(f"[{mark}] {label}" + (f" -- {detail}" if detail else ""))
+    print(f"[{mark}] {label}" + (f" -- {detail}" if detail else ""), flush=True)
     return ok
 
 
 def main() -> int:
     passed = True
 
+    _log(f"waiting for the API at {API} ...")
     _wait_for_api()
+    _log("API is up.")
+
     status, _ = _request("GET", f"{API}/docs")
     passed &= _check("Swagger docs at /api/v1/docs", status == 200, f"HTTP {status}")
 
-    for case in CASES:
+    for i, case in enumerate(CASES, 1):
         _clear_mailhog()
+        _log(
+            f"case {i}/{len(CASES)}: posting issue, expecting {case['expect']} "
+            "(first call may take a while as the LLM warms up)"
+        )
         status, body = _request("POST", f"{API}/issues", case)
         passed &= _check(
             f"POST /issues accepted ({case['expect']})",
@@ -124,6 +147,7 @@ def main() -> int:
         if status != 200:
             continue
 
+        _log("waiting for MailHog to capture the routed message ...")
         headers = _wait_for_mail()
         to = headers.get("To", [])
         reply_to = headers.get("Reply-To", [])

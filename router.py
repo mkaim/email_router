@@ -56,7 +56,7 @@ def send_mail(
     ctx: RunContext[RouterDeps],
     destination: DepartmentEmail,
     subject: str,
-) -> None:
+) -> str:
     """Forward the client's message to a department mailbox."""
     if ctx.deps.result is not None:
         raise ModelRetry("The message was already routed; do not call send_mail again.")
@@ -71,6 +71,7 @@ def send_mail(
     ctx.deps.send_email(msg)
 
     ctx.deps.result = RoutingResult(department=destination.value, subject=subject)
+    return f"Message sent to {destination.value}."
 
 
 def route_issue(
@@ -87,7 +88,9 @@ def route_issue(
         app_email=app_email,
         send_email=send_email,
     )
-    agent.run_sync(USER_PROMPT_WRAPPER.format(message=escape(message, quote=True)), deps=deps)
+    agent.run_sync(
+        USER_PROMPT_WRAPPER.format(message=escape(message, quote=True)), deps=deps
+    )
     if deps.result is None:
         raise RoutingError("the agent did not route the message")
     return deps.result

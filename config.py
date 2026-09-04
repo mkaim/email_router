@@ -24,6 +24,7 @@ DEPARTMENTS = {
 AGENT_INSTRUCTIONS = f"""
 You are an email router classifier.
 Your task is to interpret the user's issue and send it into a proper department.
+Route the message to exactly one department: call send_mail once, and only once.
 
 Available departments:
 {"\n".join(email + ": " + desc for email, desc in DEPARTMENTS.items())}
