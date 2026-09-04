@@ -1,9 +1,19 @@
+import smtplib
+from email.message import EmailMessage
 from typing import Annotated
 
-from fastapi import APIRouter, FastAPI
-from pydantic import BaseModel, EmailStr, Field
+from fastapi import APIRouter, FastAPI, HTTPException
+from pydantic import BaseModel, EmailStr, StringConstraints
 
-from router import route_issue, settings
+from router import RoutingError, RoutingResult, route_issue, settings
+
+
+def _send_email(msg: EmailMessage) -> None:
+    with smtplib.SMTP(
+        settings.SMTP_HOST, settings.SMTP_PORT, timeout=settings.SMTP_TIMEOUT
+    ) as smtp:
+        smtp.send_message(msg)
+
 
 app = FastAPI(
     title="Email Router",
@@ -17,12 +27,26 @@ api = APIRouter(prefix=settings.BASE_URL)
 
 class ClientIssue(BaseModel):
     email: EmailStr
-    message: Annotated[str, Field(strip_whitespace=True, min_length=1)]
+    message: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
-@api.post("/issues")
-def route_issue_endpoint(issue: ClientIssue):
-    return {"response": route_issue(issue.email, issue.message)}
+@api.post("/issues", response_model=RoutingResult)
+def route_issue_endpoint(issue: ClientIssue) -> RoutingResult:
+    try:
+        return route_issue(
+            issue.email,
+            issue.message,
+            send_email=_send_email,
+            app_email=settings.APP_EMAIL,
+        )
+    except RoutingError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 app.include_router(api)
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host=settings.HOST, port=settings.PORT)

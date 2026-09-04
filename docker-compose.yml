@@ -3,13 +3,13 @@ services:
     image: app:latest
     build: .
     ports:
-      - "${APP_PORT:-8000}:8000"
+      - "${APP_PORT:-8000}:${APP_PORT:-8000}"
     environment:
-      PORT: "8000"
+      HOST: "${APP_HOST:-0.0.0.0}"
+      PORT: "${APP_PORT:-8000}"
       OPENAI_BASE_URL: http://llm:8080/v1
       OPENAI_API_KEY: dummy
       OPENAI_MODEL: &hf_model Qwen/Qwen2.5-1.5B-Instruct-GGUF
-      OPENAI_TEMPERATURE: 0.2
       SMTP_HOST: smtp
       SMTP_PORT: "1025"
     depends_on:

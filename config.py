@@ -51,5 +51,8 @@ class Settings(BaseSettings):
     SMTP_PORT: int
     SMTP_TIMEOUT: float = 5.0
 
+    HOST: str = "0.0.0.0"
+    PORT: int = 8000
+
     BASE_URL: str = "/api/v1"
     APP_EMAIL: str = "app@noreply.com"

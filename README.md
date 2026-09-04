@@ -51,8 +51,11 @@ Routed messages show up in the MailHog web UI.
 uv sync
 export OPENAI_BASE_URL=... OPENAI_API_KEY=... OPENAI_MODEL=...
 export SMTP_HOST=localhost SMTP_PORT=1025
-uv run fastapi dev app.py
+uv run python app.py
 ```
+
+The API binds to `HOST`/`PORT` (defaults `0.0.0.0:8000`), both overridable
+via environment variables.
 
 ### Tests
 
@@ -96,6 +99,8 @@ All settings come from environment variables (see `config.py`):
 | `SMTP_HOST` | yes | – | SMTP host |
 | `SMTP_PORT` | yes | – | SMTP port |
 | `SMTP_TIMEOUT` | no | `5.0` | SMTP connection timeout (seconds) |
+| `HOST` | no | `0.0.0.0` | interface the API binds to |
+| `PORT` | no | `8000` | port the API listens on |
 | `BASE_URL` | no | `/api/v1` | API path prefix |
 | `APP_EMAIL` | no | `app@noreply.com` | `From` address on routed mail |
 
@@ -120,9 +125,9 @@ The list of departments and their descriptions is also in `config.py`
   address.
 - **Dependency injection for I/O.** Everything the tool needs at runtime
   (`app_email`, and a `send_email` callable) is passed in through the agent's
-  typed dependencies (`RouterDeps`). Production wires an SMTP sender
-  (`make_smtp_sender`); tests inject a fake. The tool has no module-level
-  globals, and `smtplib` is touched in exactly one place.
+  typed dependencies (`RouterDeps`). `app.py` wires the SMTP sender; tests
+  inject a fake. The tool has no module-level globals, and `smtplib` is touched
+  only in `app.py`.
 - **Input hardening.** The incoming message is Unicode-normalised (NFKC) before
   use, and HTML-escaped before being embedded in the prompt (inside an explicit
   `<message>` block) to reduce prompt-injection surface. The client address is
@@ -143,10 +148,10 @@ curl -X POST http://localhost:8000/api/v1/issues \
   }'
 ```
 
-The response echoes the agent's final text (wording depends on the model):
+The response reports the department and the subject line the agent chose:
 
 ```json
-{ "response": "The issue has been routed to it@example.com." }
+{ "department": "it@example.com", "subject": "VPN connectivity issue" }
 ```
 
 The routed email (here, to `it@example.com`) is visible in the MailHog UI at
