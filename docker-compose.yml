@@ -7,16 +7,16 @@ services:
     environment:
       HOST: "${APP_HOST:-0.0.0.0}"
       PORT: "${APP_PORT:-8000}"
-      OPENAI_BASE_URL: http://llm:8080/v1
-      OPENAI_API_KEY: dummy
-      OPENAI_MODEL: &hf_model Qwen/Qwen2.5-1.5B-Instruct-GGUF
+      LLM_BASE_URL: http://llm:11434/v1
+      LLM_API_KEY: dummy
+      LLM_MODEL: &ollama_model qwen2.5:1.5b-instruct
       SMTP_HOST: smtp
       SMTP_PORT: "1025"
     depends_on:
       smtp:
         condition: service_healthy
-      llm:
-        condition: service_healthy
+      llm-pull:
+        condition: service_completed_successfully
 
   smtp:
     image: mailhog/mailhog
@@ -32,44 +32,33 @@ services:
       retries: 5
 
   llm:
-    image: ghcr.io/ggml-org/llama.cpp:server
-    healthcheck:
-      # Round-trip a tiny generation; any HTTP 2xx means the model can serve.
-      # (llama.cpp also exposes /health, but this exercises actual inference.)
-      test:
-        - CMD
-        - curl
-        - -fsS
-        - -m
-        - "20"
-        - -X
-        - POST
-        - http://localhost:8080/v1/chat/completions
-        - -H
-        - "Content-Type: application/json"
-        - -d
-        - '{"messages":[{"role":"user","content":"ping"}],"max_tokens":1}'
-      interval: 30s
-      timeout: 25s
-      retries: 10
-      start_period: 300s
+    image: ollama/ollama
+    command: ["serve"]
+    environment:
+      # Bind 0.0.0.0 so the app container can reach the server on the network.
+      OLLAMA_HOST: 0.0.0.0
+      OLLAMA_KEEP_ALIVE: 24h
     volumes:
-      - llm-models:/models
-    command:
-      - -hf
-      - *hf_model
-      - --jinja
-      - --models-dir
-      - /models
-      - --host
-      - 0.0.0.0
-      - --port
-      - "8080"
-      - --ctx-size
-      - "4096"
-      - --reasoning
-      - off
+      - ollama:/root/.ollama
+    healthcheck:
+      # `ollama list` succeeds once the server is listening; the model itself
+      # is downloaded by the one-shot `llm-pull` service below.
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     gpus: all
 
+  llm-pull:
+    image: ollama/ollama
+    depends_on:
+      llm:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://llm:11434
+    command: ["pull", *ollama_model]
+    restart: "no"
+
 volumes:
-  llm-models:
+  ollama:

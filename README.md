@@ -17,22 +17,22 @@ docker compose up -d
 Follow the logs with `docker compose logs -f app`, and stop everything with
 `docker compose down`.
 
-This starts three services:
+This starts three long-running services (plus a one-shot model downloader):
 
 | Service | Purpose | Exposed on host |
 | --- | --- | --- |
 | `app`  | the FastAPI service | http://localhost:8000 |
 | `smtp` | MailHog — captures outgoing mail, no real delivery | web UI http://localhost:8025 |
-| `llm`  | `llama.cpp` server running `Qwen2.5-1.5B-Instruct` (GPU) | — (internal only) |
+| `llm`  | Ollama serving `qwen2.5:1.5b-instruct` (GPU) | — (internal only) |
 
 Only the app port and the MailHog web UI (for inspecting routed mail) are
 published to the host; the SMTP port and the LLM server stay on the internal
 Compose network.
 
-`smtp` and `llm` have healthchecks (MailHog's HTTP API, and a one-token
-generation against the LLM), and `app` waits for both to report healthy before
-it starts — so the first `docker compose up` may sit for a minute while the LLM
-loads the model.
+`smtp` and `llm` have healthchecks (MailHog's HTTP API, and Ollama's own
+`ollama list`), and a one-shot `llm-pull` service downloads the model before
+`app` starts — so the first `docker compose up` may sit for a while as the
+model is pulled.
 
 The API is served under the `BASE_URL` prefix (`/api/v1` by default):
 
@@ -41,15 +41,16 @@ The API is served under the `BASE_URL` prefix (`/api/v1` by default):
 
 Routed messages show up in the MailHog web UI.
 
-> The `llm` service requests a GPU (`gpus: all`) and downloads the model on
-> first start. To use a different backend, point `OPENAI_BASE_URL` /
-> `OPENAI_MODEL` / `OPENAI_API_KEY` at any OpenAI-compatible endpoint.
+> The `llm` service requests a GPU (`gpus: all`) and a separate `llm-pull`
+> service downloads the model on first start. To use a different backend, point
+> `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` at any OpenAI-compatible
+> endpoint.
 
 ### Running the API locally (without Docker)
 
 ```bash
 uv sync
-export OPENAI_BASE_URL=... OPENAI_API_KEY=... OPENAI_MODEL=...
+export LLM_BASE_URL=... LLM_API_KEY=... LLM_MODEL=...
 export SMTP_HOST=localhost SMTP_PORT=1025
 uv run python app.py
 ```
@@ -92,10 +93,10 @@ All settings come from environment variables (see `config.py`):
 
 | Variable | Required | Default | Description |
 | --- | --- | --- | --- |
-| `OPENAI_BASE_URL` | yes | – | OpenAI-compatible API base URL |
-| `OPENAI_API_KEY` | yes | – | API key (any value for the local llama.cpp server) |
-| `OPENAI_MODEL` | yes | – | model name |
-| `OPENAI_TEMPERATURE` | no | `0.2` | sampling temperature |
+| `LLM_BASE_URL` | yes | – | OpenAI-compatible API base URL |
+| `LLM_API_KEY` | yes | – | API key (any value for the local Ollama server) |
+| `LLM_MODEL` | yes | – | model name |
+| `LLM_TEMPERATURE` | no | `0.2` | sampling temperature |
 | `SMTP_HOST` | yes | – | SMTP host |
 | `SMTP_PORT` | yes | – | SMTP port |
 | `SMTP_TIMEOUT` | no | `5.0` | SMTP connection timeout (seconds) |

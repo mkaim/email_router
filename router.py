@@ -15,9 +15,9 @@ from config import AGENT_INSTRUCTIONS, DEPARTMENTS, USER_PROMPT_WRAPPER, Setting
 settings = Settings()
 
 model = OpenAIChatModel(
-    settings.OPENAI_MODEL,
+    settings.LLM_MODEL,
     provider=OpenAIProvider(
-        base_url=settings.OPENAI_BASE_URL, api_key=settings.OPENAI_API_KEY
+        base_url=settings.LLM_BASE_URL, api_key=settings.LLM_API_KEY
     ),
 )
 
@@ -47,7 +47,7 @@ agent = Agent(
     model,
     deps_type=RouterDeps,
     instructions=AGENT_INSTRUCTIONS,
-    model_settings={"temperature": settings.OPENAI_TEMPERATURE},
+    model_settings={"temperature": settings.LLM_TEMPERATURE},
 )
 
 

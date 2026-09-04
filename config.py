@@ -43,10 +43,10 @@ Write subject in same language as the message.
 
 
 class Settings(BaseSettings):
-    OPENAI_BASE_URL: str
-    OPENAI_API_KEY: SecretStr
-    OPENAI_MODEL: str
-    OPENAI_TEMPERATURE: float = 0.2
+    LLM_BASE_URL: str
+    LLM_API_KEY: SecretStr
+    LLM_MODEL: str
+    LLM_TEMPERATURE: float = 0.2
 
     SMTP_HOST: str
     SMTP_PORT: int

@@ -157,7 +157,7 @@ CASES = [
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("RUN_LLM_TESTS") != "1",
-    reason="set RUN_LLM_TESTS=1 with a reachable OPENAI_BASE_URL to exercise the real model",
+    reason="set RUN_LLM_TESTS=1 with a reachable LLM_BASE_URL to exercise the real model",
 )
 
 
