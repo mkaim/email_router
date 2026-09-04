@@ -1,151 +1,26 @@
 # Email Router
 
-An HTTP service that takes a free-text client issue and routes it to the right
-department mailbox. Classification is done by an LLM agent that picks a
-destination and writes a subject line, then sends the original message on by
-SMTP with the client's address as `Reply-To`.
+An HTTP service that routes a free-text client issue to the right department
+mailbox. An AI agent (pydantic-ai) interprets the message and calls a
+`send_mail` tool to forward it over SMTP — captured by MailHog — with the
+client's address set as `Reply-To`.
 
-## Running the environment
-
-The whole stack (API + a local LLM + a mock SMTP server) runs with Docker
-Compose:
+## Running
 
 ```bash
 docker compose up -d
 ```
 
-Follow the logs with `docker compose logs -f app`, and stop everything with
-`docker compose down`.
+Starts three services (model weights are downloaded on first start):
 
-This starts three services:
-
-| Service | Purpose | Exposed on host |
+| Service | Purpose | Host |
 | --- | --- | --- |
-| `app`  | the FastAPI service | http://localhost:8000 |
-| `smtp` | MailHog — captures outgoing mail, no real delivery | web UI http://localhost:8025 |
-| `llm`  | Ollama serving `qwen3:4b-instruct-2507-q4_K_M` (GPU) | http://localhost:11434 |
+| `app`  | FastAPI service | http://localhost:8000 |
+| `smtp` | MailHog — captures outgoing mail | http://localhost:8025 |
+| `llm`  | Ollama, `qwen3:4b-instruct-2507-q4_K_M` | http://localhost:11434 |
 
-The app port, the MailHog web UI (for inspecting routed mail), and the Ollama
-API (for running LLM tests) are published to the host; the SMTP port stays on
-the internal Compose network.
-
-`smtp` and `llm` have healthchecks (MailHog's HTTP API, and `ollama ps`), and
-`llm` pulls the model itself on startup — so the first `docker compose up` may
-sit for a while as the model is downloaded.
-
-The API is served under the `BASE_URL` prefix (`/api/v1` by default):
-
-- endpoint: `POST http://localhost:8000/api/v1/issues`
-- Swagger UI: <http://localhost:8000/api/v1/docs>
-
-Routed messages show up in the MailHog web UI.
-
-> The `llm` service requests a GPU (`gpus: all`) and pulls the model on first
-> start. To use a different backend, point `LLM_BASE_URL` / `LLM_MODEL` /
-> `LLM_API_KEY` at any OpenAI-compatible endpoint.
-
-### Running the API locally (without Docker)
-
-```bash
-uv sync
-export LLM_BASE_URL=... LLM_API_KEY=... LLM_MODEL=...
-export SMTP_HOST=localhost SMTP_PORT=1025
-uv run python app.py
-```
-
-The API binds to `HOST`/`PORT` (defaults `0.0.0.0:8000`), both overridable
-via environment variables.
-
-### Tests
-
-```bash
-uv sync
-uv run pytest
-```
-
-Tests run fully offline — the LLM is replaced with a stub model and SMTP with an
-in-memory fake, so no network, GPU, or mail server is needed.
-
-To exercise the real model (with the stack running), the LLM tests hit the
-Dockerized Ollama at `http://localhost:11434`:
-
-```bash
-RUN_LLM_TESTS=1 \
-LLM_BASE_URL=http://localhost:11434/v1 \
-LLM_API_KEY=dummy \
-LLM_MODEL=qwen3:4b-instruct-2507-q4_K_M \
-uv run pytest tests/test_llm.py
-```
-
-### DoD acceptance check (end-to-end)
-
-With the stack running (`docker compose up -d`), `check_dod.py` drives the real
-API and asserts every acceptance criterion: Swagger is reachable at
-`/api/v1/docs`, a posted issue produces a message in MailHog, that message is
-addressed to the correct department, and its `Reply-To` is the client's address.
-
-```bash
-python check_dod.py
-```
-
-It uses only the standard library. The first request may take a while as the
-LLM server loads the model. If host port 8000 or 8025 is taken, override them:
-
-```bash
-APP_PORT=8001 docker compose up -d
-API_BASE=http://localhost:8001 python check_dod.py
-```
-
-## Configuration
-
-All settings come from environment variables (see `config.py`):
-
-| Variable | Required | Default | Description |
-| --- | --- | --- | --- |
-| `LLM_BASE_URL` | yes | – | OpenAI-compatible API base URL |
-| `LLM_API_KEY` | yes | – | API key (any value for the local Ollama server) |
-| `LLM_MODEL` | yes | – | model name |
-| `LLM_TEMPERATURE` | no | `0.2` | sampling temperature |
-| `SMTP_HOST` | yes | – | SMTP host |
-| `SMTP_PORT` | yes | – | SMTP port |
-| `SMTP_TIMEOUT` | no | `5.0` | SMTP connection timeout (seconds) |
-| `HOST` | no | `0.0.0.0` | interface the API binds to |
-| `PORT` | no | `8000` | port the API listens on |
-| `BASE_URL` | no | `/api/v1` | API path prefix |
-| `APP_EMAIL` | no | `app@noreply.com` | `From` address on routed mail |
-
-The list of departments and their descriptions is also in `config.py`
-(`DEPARTMENTS`).
-
-## Architectural decisions
-
-- **Flat module layout.** The app is small, so it stays as three files instead
-  of a package:
-  - `config.py` — settings (`pydantic-settings`), department catalogue, prompts.
-  - `router.py` — the LLM agent, its `send_mail` tool, and the `route_issue()`
-    use case. This is a self-contained unit: "classify an issue and email the
-    department".
-  - `app.py` — the FastAPI layer only (request model + one route delegating to
-    `route_issue()`).
-- **LLM as a classifier with a tool, not a text generator.** The agent
-  (`pydantic-ai`) is given a single `send_mail(destination, subject)` tool.
-  `destination` is a dynamic `Enum` built from `DEPARTMENTS`, so the model can
-  only choose a real mailbox — the valid set is enforced by the schema, not by
-  parsing free text. The service never trusts a raw string from the model as an
-  address.
-- **Dependency injection for I/O.** Everything the tool needs at runtime
-  (`app_email`, and a `send_email` callable) is passed in through the agent's
-  typed dependencies (`RouterDeps`). `app.py` wires the SMTP sender; tests
-  inject a fake. The tool has no module-level globals, and `smtplib` is touched
-  only in `app.py`.
-- **Input hardening.** The incoming message is Unicode-normalised (NFKC) before
-  use, and HTML-escaped before being embedded in the prompt (inside an explicit
-  `<message>` block) to reduce prompt-injection surface. The client address is
-  validated as an email address (`EmailStr`) and is only ever used as
-  `Reply-To`.
-- **Config over code.** Departments, their descriptions, and the prompt text
-  live in `config.py` as data, so adding or re-scoping a department needs no
-  code change.
+- Endpoint: `POST http://localhost:8000/api/v1/issues`
+- Swagger UI: http://localhost:8000/api/v1/docs
 
 ## Example request
 
@@ -154,27 +29,35 @@ curl -X POST http://localhost:8000/api/v1/issues \
   -H 'Content-Type: application/json' \
   -d '{
     "email": "jane.doe@example.com",
-    "message": "My laptop will not connect to the VPN since this morning and I cannot reach any internal systems."
+    "message": "My laptop will not connect to the company VPN since this morning."
   }'
 ```
 
-The response reports the department and the subject line the agent chose:
+Response:
 
 ```json
 { "department": "it@example.com", "subject": "VPN connectivity issue" }
 ```
 
-The routed email (here, to `it@example.com`) is visible in the MailHog UI at
-http://localhost:8025.
+The routed email appears in the MailHog web UI.
 
-A message in another language is routed the same way, and the subject is written
-in that language:
+## Architectural decisions
+
+- **FastAPI + pydantic-ai.** Popular, minimal libraries: FastAPI for the HTTP
+  layer and pydantic-ai for the agent and its tool calling — chosen for
+  simplicity over heavier frameworks.
+- **LLM agent with a tool.** The agent gets a single `send_mail(destination,
+  subject)` tool; `destination` is a `Literal` of the department addresses, so
+  the model can only pick a real mailbox — enforced by the schema, not by
+  parsing free text.
+- **Flat layout.** `config.py` (settings, departments, prompts), `router.py`
+  (agent, tool, `route_issue()`), `app.py` (the FastAPI route).
+- **Dependency injection.** The SMTP sender is injected, so tests use a fake;
+  `smtplib` is touched only in `app.py`.
+
+## Tests
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/issues \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "email": "jan.kowalski@example.com",
-    "message": "Nie dostałem paska wynagrodzeń za poprzedni miesiąc."
-  }'
+uv run pytest       # offline: stub LLM + in-memory SMTP
+python check_dod.py # end-to-end, against a running stack
 ```
