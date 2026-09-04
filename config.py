@@ -48,7 +48,7 @@ Here's a user message:
 </message>
 
 Route this message to the single department that best fits the issue.
-Write the subject in the same language as the message.
+Write a short subject in the same language as the message.
 """.strip()
 
 
