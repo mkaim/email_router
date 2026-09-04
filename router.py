@@ -13,8 +13,8 @@ from pydantic_ai.providers.openai import OpenAIProvider
 
 from config import (
     AGENT_INSTRUCTIONS,
-    DepartmentEmail,
     USER_PROMPT_WRAPPER,
+    DepartmentEmail,
     Settings,
 )
 

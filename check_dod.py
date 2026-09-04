@@ -134,9 +134,7 @@ def main() -> int:
 
     for i, case in enumerate(CASES, 1):
         _clear_mailhog()
-        _log(
-            f"case {i}/{len(CASES)}: posting issue, expecting {case['expect']}"
-        )
+        _log(f"case {i}/{len(CASES)}: posting issue, expecting {case['expect']}")
         status, body = _request("POST", f"{API}/issues", case)
         passed &= _check(
             f"POST /issues accepted ({case['expect']})",

@@ -128,9 +128,9 @@ CASES = [
         "department": "help-desk@example.com",
     },
     {
-        "id": "sponsorship",
+        "id": "missing-dog",
         "email": "nina@example.com",
-        "message": "Who should I contact about sponsoring a local charity event?",
+        "message": "Widzieliście mojego psa? Przyszedłem z nim do biura, ale gdzieś mi uciekł.",
         "department": "other@example.com",
     },
     {

@@ -26,9 +26,7 @@ def _model_that_sends(messages: list[ModelMessage], info: AgentInfo) -> ModelRes
         return ModelResponse(parts=[TextPart("done")])
     return ModelResponse(
         parts=[
-            ToolCallPart(
-                "send_mail", {"destination": "it@example.com", "subject": "x"}
-            )
+            ToolCallPart("send_mail", {"destination": "it@example.com", "subject": "x"})
         ]
     )
 

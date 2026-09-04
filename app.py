@@ -45,7 +45,9 @@ def route_issue_endpoint(issue: ClientIssue) -> RoutingResult:
     except ModelAPIError as exc:
         raise HTTPException(status_code=503, detail="LLM unavailable") from exc
     except (smtplib.SMTPException, OSError) as exc:
-        raise HTTPException(status_code=502, detail=f"could not send mail: {exc}") from exc
+        raise HTTPException(
+            status_code=502, detail=f"could not send mail: {exc}"
+        ) from exc
 
 
 app.include_router(api)
