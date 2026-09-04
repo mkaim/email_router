@@ -17,22 +17,21 @@ docker compose up -d
 Follow the logs with `docker compose logs -f app`, and stop everything with
 `docker compose down`.
 
-This starts three long-running services (plus a one-shot model downloader):
+This starts three services:
 
 | Service | Purpose | Exposed on host |
 | --- | --- | --- |
 | `app`  | the FastAPI service | http://localhost:8000 |
 | `smtp` | MailHog — captures outgoing mail, no real delivery | web UI http://localhost:8025 |
-| `llm`  | Ollama serving `qwen2.5:1.5b-instruct` (GPU) | — (internal only) |
+| `llm`  | Ollama serving `qwen3:4b-instruct-2507-q4_K_M` (GPU) | http://localhost:11434 |
 
-Only the app port and the MailHog web UI (for inspecting routed mail) are
-published to the host; the SMTP port and the LLM server stay on the internal
-Compose network.
+The app port, the MailHog web UI (for inspecting routed mail), and the Ollama
+API (for running LLM tests) are published to the host; the SMTP port stays on
+the internal Compose network.
 
-`smtp` and `llm` have healthchecks (MailHog's HTTP API, and Ollama's own
-`ollama list`), and a one-shot `llm-pull` service downloads the model before
-`app` starts — so the first `docker compose up` may sit for a while as the
-model is pulled.
+`smtp` and `llm` have healthchecks (MailHog's HTTP API, and `ollama ps`), and
+`llm` pulls the model itself on startup — so the first `docker compose up` may
+sit for a while as the model is downloaded.
 
 The API is served under the `BASE_URL` prefix (`/api/v1` by default):
 
@@ -41,10 +40,9 @@ The API is served under the `BASE_URL` prefix (`/api/v1` by default):
 
 Routed messages show up in the MailHog web UI.
 
-> The `llm` service requests a GPU (`gpus: all`) and a separate `llm-pull`
-> service downloads the model on first start. To use a different backend, point
-> `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` at any OpenAI-compatible
-> endpoint.
+> The `llm` service requests a GPU (`gpus: all`) and pulls the model on first
+> start. To use a different backend, point `LLM_BASE_URL` / `LLM_MODEL` /
+> `LLM_API_KEY` at any OpenAI-compatible endpoint.
 
 ### Running the API locally (without Docker)
 
@@ -67,6 +65,17 @@ uv run pytest
 
 Tests run fully offline — the LLM is replaced with a stub model and SMTP with an
 in-memory fake, so no network, GPU, or mail server is needed.
+
+To exercise the real model (with the stack running), the LLM tests hit the
+Dockerized Ollama at `http://localhost:11434`:
+
+```bash
+RUN_LLM_TESTS=1 \
+LLM_BASE_URL=http://localhost:11434/v1 \
+LLM_API_KEY=dummy \
+LLM_MODEL=qwen3:4b-instruct-2507-q4_K_M \
+uv run pytest tests/test_llm.py
+```
 
 ### DoD acceptance check (end-to-end)
 

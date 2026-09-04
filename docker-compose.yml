@@ -1,3 +1,5 @@
+x-llm-model: &llm_model qwen3:4b-instruct-2507-q4_K_M
+
 services:
   app:
     image: app:latest
@@ -9,14 +11,14 @@ services:
       PORT: "${APP_PORT:-8000}"
       LLM_BASE_URL: http://llm:11434/v1
       LLM_API_KEY: dummy
-      LLM_MODEL: &ollama_model qwen2.5:1.5b-instruct
+      LLM_MODEL: *llm_model
       SMTP_HOST: smtp
       SMTP_PORT: "1025"
     depends_on:
       smtp:
         condition: service_healthy
-      llm-pull:
-        condition: service_completed_successfully
+      llm:
+        condition: service_healthy
 
   smtp:
     image: mailhog/mailhog
@@ -32,33 +34,51 @@ services:
       retries: 5
 
   llm:
-    image: ollama/ollama
-    command: ["serve"]
+    image: ollama/ollama:latest
     environment:
-      # Bind 0.0.0.0 so the app container can reach the server on the network.
-      OLLAMA_HOST: 0.0.0.0
+      LLM_MODEL: *llm_model
+      OLLAMA_HOST: 0.0.0.0:11434
       OLLAMA_KEEP_ALIVE: 24h
+    ports:
+      # Published for local LLM tests / inspection; the app reaches it internally.
+      - "${LLM_PORT:-11434}:11434"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+
+        echo "Starting Ollama..."
+        ollama serve &
+        OLLAMA_PID=$$!
+
+        echo "Waiting for Ollama API..."
+        until ollama list >/dev/null 2>&1; do
+          sleep 1
+        done
+
+        echo "Pulling model: $$LLM_MODEL"
+        ollama pull "$$LLM_MODEL"
+
+        echo "Warming up model: $$LLM_MODEL"
+        ollama run "$$LLM_MODEL" "just answer single word: PING" >/dev/null 2>&1 || true
+
+        echo "Model $$LLM_MODEL is ready"
+
+        wait $$OLLAMA_PID
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "ollama ps | awk 'NR > 1 {print $$1}' | grep -Fxq \"$$LLM_MODEL\""
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 10s
+    gpus: all
     volumes:
       - ollama:/root/.ollama
-    healthcheck:
-      # `ollama list` succeeds once the server is listening; the model itself
-      # is downloaded by the one-shot `llm-pull` service below.
-      test: ["CMD", "ollama", "list"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
-    gpus: all
-
-  llm-pull:
-    image: ollama/ollama
-    depends_on:
-      llm:
-        condition: service_healthy
-    environment:
-      OLLAMA_HOST: http://llm:11434
-    command: ["pull", *ollama_model]
-    restart: "no"
 
 volumes:
   ollama:

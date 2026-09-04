@@ -103,7 +103,7 @@ def _wait_for_api() -> None:
         try:
             _request("GET", f"{API}/docs")
             return
-        except (urllib.error.URLError, ConnectionError):
+        except urllib.error.URLError, ConnectionError:
             now = time.monotonic()
             if now - last_log >= 5.0:
                 _log(f"API not up yet, retrying ... ({int(deadline - now)}s left)")
@@ -135,8 +135,7 @@ def main() -> int:
     for i, case in enumerate(CASES, 1):
         _clear_mailhog()
         _log(
-            f"case {i}/{len(CASES)}: posting issue, expecting {case['expect']} "
-            "(first call may take a while as the LLM warms up)"
+            f"case {i}/{len(CASES)}: posting issue, expecting {case['expect']}"
         )
         status, body = _request("POST", f"{API}/issues", case)
         passed &= _check(

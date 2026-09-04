@@ -79,8 +79,7 @@ CASES = [
         "id": "onboarding",
         "email": "anna.nowak@example.com",
         "message": (
-            "I am starting next Monday and I have not received my onboarding "
-            "documents or laptop setup instructions."
+            "I am starting next Monday and I have not received my onboarding documents."
         ),
         "department": "human-resources@example.com",
     },
@@ -119,21 +118,19 @@ CASES = [
     {
         "id": "parking-badge",
         "email": "kuba@example.com",
-        "message": "I lost my parking badge and need a replacement.",
+        "message": "I lost my parking permit for the company garage and need a replacement.",
         "department": "help-desk@example.com",
     },
     {
         "id": "ergonomic-chair",
         "email": "igor@example.com",
-        "message": (
-            "I need an ergonomic chair because my back hurts from the current one."
-        ),
+        "message": "I need a new office chair because my current one is broken.",
         "department": "help-desk@example.com",
     },
     {
-        "id": "legal-contact",
+        "id": "sponsorship",
         "email": "nina@example.com",
-        "message": "Where can I find the contact details of the legal department?",
+        "message": "Who should I contact about sponsoring a local charity event?",
         "department": "other@example.com",
     },
     {
