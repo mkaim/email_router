@@ -61,3 +61,9 @@ The routed email appears in the MailHog web UI.
 uv run pytest       # offline: stub LLM + in-memory SMTP
 python check_dod.py # end-to-end, against a running stack
 ```
+
+To run the LLM tests against the Dockerized Ollama:
+
+```bash
+RUN_LLM_TESTS=1 uv run pytest tests/test_llm.py
+```
