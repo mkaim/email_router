@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, FastAPI, HTTPException
 from pydantic import BaseModel, EmailStr, StringConstraints
+from pydantic_ai.exceptions import ModelAPIError
 
 from router import RoutingError, RoutingResult, route_issue, settings
 
@@ -41,6 +42,10 @@ def route_issue_endpoint(issue: ClientIssue) -> RoutingResult:
         )
     except RoutingError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except ModelAPIError as exc:
+        raise HTTPException(status_code=503, detail="LLM unavailable") from exc
+    except (smtplib.SMTPException, OSError) as exc:
+        raise HTTPException(status_code=502, detail=f"could not send mail: {exc}") from exc
 
 
 app.include_router(api)
