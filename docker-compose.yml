@@ -19,6 +19,18 @@ services:
         condition: service_healthy
       llm:
         condition: service_healthy
+    healthcheck:
+      # Cheap GET that doesn't hit the LLM; the image has no curl/wget, so use
+      # Python's urllib.
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/openapi.json')"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   smtp:
     image: mailhog/mailhog
