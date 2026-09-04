@@ -2,6 +2,7 @@ import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
 from email.message import EmailMessage
+from email.utils import make_msgid
 from html import escape
 
 from pydantic import BaseModel
@@ -30,6 +31,7 @@ model = OpenAIChatModel(
 class RoutingResult(BaseModel):
     department: str
     subject: str
+    message_id: str
 
 
 @dataclass
@@ -74,11 +76,16 @@ def send_mail(
     msg["To"] = destination
     msg["Subject"] = subject
     msg["Reply-To"] = ctx.deps.client_email
+    msg["Message-ID"] = make_msgid(domain="example.com")
     msg.set_content(ctx.deps.message)
 
     ctx.deps.send_email(msg)
 
-    ctx.deps.result = RoutingResult(department=destination, subject=subject)
+    ctx.deps.result = RoutingResult(
+        department=destination,
+        subject=subject,
+        message_id=msg["Message-ID"],
+    )
     return f"Message sent to {destination}."
 
 

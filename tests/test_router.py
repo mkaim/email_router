@@ -50,10 +50,12 @@ def test_route_sends_to_chosen_department():
 
     assert result.department == "it@example.com"
     assert result.subject == "VPN down"
+    assert result.message_id.startswith("<") and result.message_id.endswith(">")
     assert len(sent) == 1
     assert sent[0]["To"] == "it@example.com"
     assert sent[0]["Subject"] == "VPN down"
     assert sent[0]["Reply-To"] == "client@example.com"
+    assert sent[0]["Message-ID"] == result.message_id
 
 
 def test_route_raises_when_agent_does_not_route():
