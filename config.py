@@ -1,7 +1,17 @@
+from typing import Literal
+
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings
 
-DEPARTMENTS = {
+DepartmentEmail = Literal[
+    "human-resources@example.com",
+    "help-desk@example.com",
+    "it@example.com",
+    "kadry@example.com",
+    "other@example.com",
+]
+
+DEPARTMENTS: dict[DepartmentEmail, str] = {
     "human-resources@example.com": (
         "Recruitment, onboarding, training, performance reviews, workplace "
         "culture, harassment or conflicts between coworkers."

@@ -3,7 +3,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from email.message import EmailMessage
 from html import escape
-from typing import Literal
 
 from pydantic import BaseModel
 from pydantic_ai import Agent, ModelRetry, RunContext
@@ -11,7 +10,12 @@ from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from config import AGENT_INSTRUCTIONS, DEPARTMENTS, USER_PROMPT_WRAPPER, Settings
+from config import (
+    AGENT_INSTRUCTIONS,
+    DepartmentEmail,
+    USER_PROMPT_WRAPPER,
+    Settings,
+)
 
 settings = Settings()
 
@@ -21,10 +25,6 @@ model = OpenAIChatModel(
         base_url=settings.LLM_BASE_URL, api_key=settings.LLM_API_KEY
     ),
 )
-
-# Inline Literal (not Enum) so the tool schema exposes the allowed values
-# directly — some small models mishandle the $ref/$defs an Enum generates.
-DepartmentEmail = Literal.__getitem__(tuple(DEPARTMENTS))
 
 
 class RoutingResult(BaseModel):
