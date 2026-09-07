@@ -1,8 +1,9 @@
 import smtplib
+from collections.abc import Callable
 from email.message import EmailMessage
 from typing import Annotated
 
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from pydantic import BaseModel, EmailStr, StringConstraints
 from pydantic_ai.exceptions import ModelAPIError
 
@@ -14,6 +15,13 @@ def _send_email(msg: EmailMessage) -> None:
         settings.SMTP_HOST, settings.SMTP_PORT, timeout=settings.SMTP_TIMEOUT
     ) as smtp:
         smtp.send_message(msg)
+
+
+def get_send_email() -> Callable[[EmailMessage], None]:
+    return _send_email
+
+
+SendEmail = Annotated[Callable[[EmailMessage], None], Depends(get_send_email)]
 
 
 app = FastAPI(
@@ -32,12 +40,12 @@ class ClientIssue(BaseModel):
 
 
 @api.post("/issues", response_model=RoutingResult)
-def route_issue_endpoint(issue: ClientIssue) -> RoutingResult:
+def route_issue_endpoint(issue: ClientIssue, send_email: SendEmail) -> RoutingResult:
     try:
         return route_issue(
             issue.email,
             issue.message,
-            send_email=_send_email,
+            send_email=send_email,
             app_email=settings.APP_EMAIL,
         )
     except RoutingError as exc:

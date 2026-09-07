@@ -1,46 +1,17 @@
 from email.message import EmailMessage
 
 import pytest
-from pydantic_ai.messages import (
-    ModelMessage,
-    ModelRequest,
-    ModelResponse,
-    TextPart,
-    ToolCallPart,
-    ToolReturnPart,
-)
+from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from router import RoutingError, agent, route_issue
-
-
-def _stub_model(destination: str, subject: str) -> FunctionModel:
-    """A model that calls send_mail once, then replies with text."""
-
-    def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-        already_sent = any(
-            isinstance(part, ToolReturnPart)
-            for m in messages
-            if isinstance(m, ModelRequest)
-            for part in m.parts
-        )
-        if already_sent:
-            return ModelResponse(parts=[TextPart("done")])
-        return ModelResponse(
-            parts=[
-                ToolCallPart(
-                    "send_mail", {"destination": destination, "subject": subject}
-                )
-            ]
-        )
-
-    return FunctionModel(respond)
+from tests.conftest import stub_send_mail_model
 
 
 def test_route_sends_to_chosen_department():
     sent: list[EmailMessage] = []
 
-    with agent.override(model=_stub_model("it@example.com", "VPN down")):
+    with agent.override(model=stub_send_mail_model("it@example.com", "VPN down")):
         result = route_issue(
             "client@example.com",
             "My VPN stopped working",
