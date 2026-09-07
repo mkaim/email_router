@@ -36,10 +36,34 @@ curl -X POST http://localhost:8000/api/v1/issues \
 Response:
 
 ```json
-{ "department": "it@example.com", "subject": "VPN connectivity issue" }
+{
+  "department": "it@example.com",
+  "subject": "VPN connectivity issue",
+  "message_id": "<178876550983.52386.4768702536937760687@example.com>"
+}
 ```
 
 The routed email appears in the MailHog web UI.
+
+## Configuration
+
+Settings are read from environment variables (`config.py:Settings`, via
+`pydantic-settings`). `docker compose up` sets all of these for you; set them
+yourself if running the app directly (e.g. `uv run python app.py`).
+
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `LLM_BASE_URL` | yes | — | OpenAI-compatible base URL for the LLM (Ollama's `/v1` endpoint) |
+| `LLM_API_KEY` | yes | — | API key sent to the LLM endpoint (any non-empty value for local Ollama) |
+| `LLM_MODEL` | yes | — | Model name to request, e.g. `qwen3:4b-instruct-2507-q4_K_M` |
+| `LLM_TEMPERATURE` | no | `0.2` | Sampling temperature for the routing agent |
+| `SMTP_HOST` | yes | — | SMTP host the routed mail is sent through |
+| `SMTP_PORT` | yes | — | SMTP port |
+| `SMTP_TIMEOUT` | no | `5.0` | SMTP connection timeout, in seconds |
+| `HOST` | no | `0.0.0.0` | Interface the FastAPI app binds to |
+| `PORT` | no | `8000` | Port the FastAPI app binds to |
+| `BASE_URL` | no | `/api/v1` | Path prefix for the API, docs, and OpenAPI schema |
+| `APP_EMAIL` | no | `app@noreply.com` | `From` address on routed emails |
 
 ## Architectural decisions
 
